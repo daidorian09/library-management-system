@@ -18,9 +18,11 @@ async function start() {
 
 		app.use(globalErrors());
 
-		app.listen(config.server.port, () => {
-			logger.info(`Start server, port: ${config.server.port}`);
-		});
+		if (process.env.NODE_ENV !== 'test') {
+			app.listen(config.server.port, () => {
+				logger.info(`Start server, port: ${config.server.port}`);
+			});
+		}
 	} catch (error) {
 		logger.error(`Error occurred during start : ${error}`);
 	}

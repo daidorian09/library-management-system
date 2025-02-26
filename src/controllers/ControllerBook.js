@@ -67,7 +67,7 @@ export default {
 			}
 
 			const books = await Book.findAll();
-			if (!books) {
+			if (!books || books.length === 0) {
 				logger.info('No books found');
 				res.json([]);
 			}

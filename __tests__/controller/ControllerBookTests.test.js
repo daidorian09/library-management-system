@@ -1,11 +1,11 @@
 import request from 'supertest';
-import { app } from '../../src/app';  // Assuming this is where your express app is located
-import { Book } from '../../src/models';  // Assuming your Book model is here
-import client from '../../src/cache/redis'; // Redis client
-import Response from '../../src/helpers/helperResponse';
+import { app } from '../../src/app';  
+import { Book } from '../../src/models';  
+import client from '../../src/cache/redis'; 
 
 jest.mock('../../src/models');  
 jest.mock('../../src/cache/redis'); 
+
 
 describe('Books Controller Tests', () => {
     describe('POST /books', () => {
@@ -37,6 +37,16 @@ describe('Books Controller Tests', () => {
 
             expect(res.status).toBe(400);
         });
+
+        it('should handle unexpected errors gracefully', async () => {
+            const newBook = { name: 'New Book' };
+    
+            Book.findOne.mockRejectedValue(new Error('Database error'));
+        
+            const res = await request(app).post('/api/v1/books').send(newBook);
+        
+            expect(res.status).toBe(500);
+          });
     });
 
     describe('GET /books', () => {
@@ -63,9 +73,46 @@ describe('Books Controller Tests', () => {
             expect(res.status).toBe(200);
             expect(res.body).toEqual(JSON.parse(cachedBooks));
         });
+
+        it('should return an empty array if no books are found', async () => {
+            client.get.mockResolvedValue(null); 
+            
+            Book.findAll.mockResolvedValue([]); 
+        
+            const res = await request(app).get('/api/v1/books');
+        
+            expect(res.status).toBe(200);  
+            expect(res.body).toEqual([]); 
+            expect(Book.findAll).toHaveBeenCalled();
+          });
+
+        it('should handle unexpected errors gracefully', async () => {
+            client.get.mockResolvedValue(null);    
+            Book.findAll.mockRejectedValue(new Error('Database error'));
+        
+            const res = await request(app).get('/api/v1/books');
+        
+            expect(res.status).toBe(500);
+          });
     });
 
     describe('GET /books/:id', () => {
+        it('should return cached book data if available', async () => {
+            const mockBookData = {
+              id: 1,
+              name: 'Mock Book',
+              averageScore: 4.5,
+            };
+        
+            client.get.mockResolvedValue(JSON.stringify(mockBookData));
+        
+            const res = await request(app).get('/api/v1/books/1');
+        
+            expect(res.status).toBe(200); 
+            expect(res.body).toEqual(mockBookData); 
+            expect(client.get).toHaveBeenCalledWith('books:1');  
+          });
+        
         it('should return book details when valid id is provided', async () => {
             const book = { id: 1, name: 'Book 1',averageScore: 1  };
             
@@ -100,6 +147,18 @@ describe('Books Controller Tests', () => {
             const res = await request(app).get(`/api/v1/books/${bookId}`);
 
             expect(res.status).toBe(400);  
+        });
+
+        it('should handle unexpected errors gracefully', async () => {
+            const bookId = 999;
+            
+            client.get.mockResolvedValue(null);
+
+            Book.findOne.mockResolvedValue(new Error('Database error'));
+
+            const res = await request(app).get(`/api/v1/books/${bookId}`);
+        
+            expect(res.status).toBe(500);
         });
     });
 });
