@@ -3,6 +3,7 @@ import Joi from 'joi';
 import Response from '../helpers/helperResponse';
 import moment from 'moment';
 import logger from '../helpers/logger';
+import client from '../cache/redis';
 
 export default {
 	/**
@@ -57,11 +58,24 @@ export default {
 	 */
 	get: async (req, res) => {
 		try {
-			const users = await User.findAll();
-			if (!users) {
-				logger.info('No users found');
-				res.json([]);
+			const cacheKey = 'users:list';
+
+			const cachedUsers = await client.get(cacheKey);
+
+			if (cachedUsers) {
+				logger.info('Returning cached users data');
+				return res.json(JSON.parse(cachedUsers)); // Return cached response
 			}
+
+			const users = await User.findAll();
+
+			if (!users || users.length === 0) {
+				logger.warn('No users found');
+				return res.json([]);
+			}
+
+			await client.set(cacheKey, JSON.stringify(users), { EX: 180 });
+
 			res.json(users);
 		} catch (error) {
 			logger.error(`Exception occurred in users/get: ${error}`);
@@ -79,6 +93,15 @@ export default {
 	getById: async (req, res) => {
 		try {
 			const { id } = req.params;
+
+			const cacheKey = `users:${id}`;
+
+			const cachedUser = await client.get(cacheKey);
+
+			if (cachedUser) {
+				logger.info('Returning cached user data');
+				return res.json(JSON.parse(cachedUser));
+			}
 
 			const schema = Joi.object({
 				id: Joi.number().integer().greater(0).required().messages({
@@ -124,8 +147,6 @@ export default {
 				return Response.NotFoundUser(res);
 			}
 
-			console.log(user);
-
 			const currentBooks = user.BookBorrows.filter((borrow) => {
 				return !borrow.BookReturns || borrow.BookReturns.length === 0;
 			});
@@ -139,12 +160,16 @@ export default {
 				name: borrow.Book.name,
 			}));
 
-			return res.json({
+			const userData = {
 				id: user.id,
 				name: user.name,
 				present: presentBooks,
 				past: pastBooks,
-			});
+			};
+
+			await client.set(cacheKey, JSON.stringify(userData), { EX: 120 });
+
+			res.json(userData);
 		} catch (error) {
 			logger.error(`Exception occurred in users/getById: ${error}`);
 			Response.InternalServerError(res);
@@ -198,10 +223,25 @@ export default {
 				return Response.NotFoundBook(res);
 			}
 
+			const lockKey = `bookLock:${bookId}`;
+
+			// Attempt to acquire lock
+			const lock = await client.set(lockKey, 'locked', {
+				NX: true,
+				EX: 60,
+			});
+
+			if (lock === 'OK') {
+				logger.warn(`Book with ID ${bookId} is currently locked by another user`);
+				return Response.Conflict(res, 'Book is already borrowed by another user.');
+			}
+
 			const nowUtc = moment().utc().format();
 
 			await BookBorrow.create({ bookId, userId: id, borrowedDate: nowUtc });
 
+			//Release lock
+			await client.del(lockKey);
 			return Response.NoContent(res);
 		} catch (error) {
 			logger.error(`Exception occurred in users/borrow: ${error}`);

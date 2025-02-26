@@ -3,6 +3,7 @@ import { Book, BookReturn } from '../models/index';
 import Response from '../helpers/helperResponse';
 import { Sequelize } from 'sequelize';
 import logger from '../helpers/logger';
+import client from '../cache/redis';
 
 export default {
 	/**
@@ -56,11 +57,23 @@ export default {
 	 */
 	get: async (req, res) => {
 		try {
+			const cacheKey = 'books:list';
+
+			const cachedBooks = await client.get(cacheKey);
+
+			if (cachedBooks) {
+				logger.info('Returning cached books data');
+				return res.json(JSON.parse(cachedBooks));
+			}
+
 			const books = await Book.findAll();
 			if (!books) {
 				logger.info('No books found');
 				res.json([]);
 			}
+
+			await client.set(cacheKey, JSON.stringify(books), { EX: 180 });
+
 			res.json(books);
 		} catch (error) {
 			logger.error(`Exception occurred in books/get: ${error}`);
@@ -79,7 +92,14 @@ export default {
 		try {
 			const { id } = req.params;
 
-			const idNumber = parseInt(id, 10);
+			const cacheKey = `books:${id}`;
+
+			const cachedBook = await client.get(cacheKey);
+
+			if (cachedBook) {
+				logger.info('Returning cached book data');
+				return res.json(JSON.parse(cachedBook));
+			}
 
 			const schema = Joi.object({
 				id: Joi.number().integer().greater(0).required().messages({
@@ -90,7 +110,7 @@ export default {
 				}),
 			});
 
-			const { error } = schema.validate({ id: idNumber });
+			const { error } = schema.validate({ id });
 
 			if (error) {
 				logger.warn(`Validation error: ${error.details[0].message}`);
@@ -112,16 +132,20 @@ export default {
 			if (!book) {
 				logger.warn(`Book with ID ${id} not found`);
 				return Response.NotFoundBook(res);
-			  }
+			}
 
 			let averageScore = parseFloat(book.get('averageScore'));
 			averageScore = isNaN(averageScore) || averageScore === 0 ? -1 : parseFloat(averageScore.toFixed(2));
 
-			res.json({
+			const bookData = {
 				id: book.id,
 				name: book.name,
 				averageScore,
-			});
+			};
+
+			await client.set(cacheKey, JSON.stringify(bookData), { EX: 120 });
+
+			res.json(bookData);
 		} catch (error) {
 			logger.error(`Exception occurred in books/getById: ${error}`);
 			Response.InternalServerError(res);
