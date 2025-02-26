@@ -8,7 +8,8 @@
 		"dev": "nodemon src/app.js --exec babel-node",
 		"start": "node build/app.js",
 		"lint": "eslint src --ext .js",
-		"lint:fix": "eslint src --ext .js --fix"
+		"lint:fix": "eslint src --ext .js --fix",
+		"test": "jest"
 	},
 	"keywords": [
 		"express",
@@ -40,8 +41,16 @@
 		"eslint": "^8.56.0",
 		"eslint-config-prettier": "^9.1.0",
 		"eslint-plugin-prettier": "^5.2.3",
+		"jest": "^29.7.0",
 		"nodemon": "^3.0.3",
 		"prettier": "^3.2.4",
-		"prettier-eslint": "^16.3.0"
+		"prettier-eslint": "^16.3.0",
+		"supertest": "^7.0.0"
+	},
+	"jest": {
+		"testMatch": [
+			"**/__tests__/**/*.[jt]s?(x)",
+    		"**/?(*.)+(spec|test).[tj]s?(x)"
+  		]
 	}
 }

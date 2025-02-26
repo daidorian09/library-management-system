@@ -26,6 +26,8 @@ async function start() {
 	}
 }
 
+export { app };
+
 start();
 
 process.on('SIGINT', () => {

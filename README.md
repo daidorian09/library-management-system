@@ -1,7 +1,7 @@
 # Library Management System
 
 ## 📌 Overview
-This is a **Library Management System** built with **Node.js, Express.js, Babel (ES6), PostgreSQL, and Sequelize**. The application allows library members to borrow and return books, manage users, and retrieve book information efficiently.
+This is a **Library Management System** built with **Node.js, Express.js, Babel (ES6), PostgreSQL, Redis and Sequelize**. The application allows library members to borrow and return books, manage users, and retrieve book information efficiently.
 
 ## 🚀 Features
 - **User Management**
@@ -21,6 +21,7 @@ This is a **Library Management System** built with **Node.js, Express.js, Babel 
 - **Express.js** - Web framework for building APIs
 - **Babel** - Enables ES6+ support
 - **PostgreSQL** - Relational database for data storage
+- **Redis** - Distributed Caching
 - **Sequelize** - ORM for database management
 
 ## 🏗️ Setup & Installation
