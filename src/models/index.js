@@ -7,12 +7,12 @@ import config from '../config';
 
 // Set up Sequelize connection
 const sequelize = new Sequelize({
-  dialect: config.dialect, 
-  host: config.host,
-  username: config.username, 
-  password: config.password, 
-  database: config.database, 
-  logging: false,
+	dialect: config.dialect,
+	host: config.host,
+	username: config.username,
+	password: config.password,
+	database: config.database,
+	logging: false,
 });
 
 // Initialize models

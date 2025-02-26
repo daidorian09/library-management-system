@@ -6,7 +6,7 @@ import catchErrors from '../helpers/catchErrors';
 const router = Router();
 
 router.get('/', catchErrors(book.get));
-router.post('/',  catchErrors(book.create));
+router.post('/', catchErrors(book.create));
 router.get('/:id/', catchErrors(book.getById));
 
 export default router;
