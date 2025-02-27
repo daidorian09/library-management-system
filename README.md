@@ -50,12 +50,7 @@ Configure a `.config.js` file in the root directory and add the following:
 	dialect: 'postgres',
 ```
 
-### 4️⃣ Run Database Migrations
-```sh
-npx sequelize db:migrate
-```
-
-### 5️⃣ Start the Application
+### 4️⃣Start the Application
 ```sh
 npm run dev
 ```
@@ -71,6 +66,79 @@ npm run dev
 | POST   | /books                    | Add a new book                     |
 | POST   | /books/:id/borrow/bookId  | Borrow a book                      |
 | POST   | /books/:id/return/bookId  | Return a book and give a rating    |
+
+
+## 🐳 Docker Support
+1. To run the application with Docker, follow these steps:
+
+   Build and start the Docker containers
+
+	```sh 
+	docker-compose up --build
+	```
+
+2. Configuration for Docker
+The docker-compose.yml file contains the necessary configuration to set up the application, Redis, and PostgreSQL services. **seed** will fiil the database automatically
+```sh 
+version: "3.8"
+services:
+  app:
+    build: .
+    ports:
+      - "3030:3030"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3030
+      - DATABASE=libraryDb
+      - USERNAME=docker
+      - PASSWORD=dockerf
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=docker
+      - DB_PASSWORD=dockerf
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_USERNAME=redisuser
+      - REDIS_DB=0
+      - ENVIRONMENT=stage
+    depends_on:
+      - redis
+      - postgres
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:alpine
+    environment:
+      POSTGRES_DB: libraryDb
+      POSTGRES_USER: docker
+      POSTGRES_PASSWORD: dockerf
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docker"]
+      interval: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+```
+
+##  🧪 Testing with Supertest
+Supertest is used for API testing. Below are the instructions to run tests with coverage.
+```sh 
+npm run test
+```
 
 ## 🏗️ Development
 - Use building app `npm run build` for compiling
