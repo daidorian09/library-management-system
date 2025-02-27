@@ -8,9 +8,14 @@ class Redis {
 			return Redis.instance;
 		}
 
+		const redisUrl = options.environment === 'dev' ? `redis://${options.username}:${options.password}@${options.host}:${options.port}` : `redis://${options.host}:${options.port}`;
+
 		this.client = createClient({
-			url: `redis://${options.username}:${options.password}@${options.host}:${options.port}`,
+			url: redisUrl,
 			db: options.db || 0,
+			socket: {
+				reconnectStrategy: (retries) => (retries > 5 ? false : Math.min(retries * 1000, 5000)),
+			}
 		});
 
 		Redis.instance = this;
@@ -30,6 +35,14 @@ client.on('connect', () => {
 
 client.on('error', (err) => {
 	logger.error(`Redis connection error: ${err.message}`);
+});
+
+client.on('reconnecting', () => {
+	console.log('Redis reconnecting...');
+});
+
+client.on('end', () => {
+	console.log('Redis connection closed.');
 });
 
 export default client;

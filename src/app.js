@@ -6,6 +6,8 @@ import router from './routes/index.js';
 import globalErrors from './helpers/globalErrors.js';
 import logger from './helpers/logger';
 import client from './cache/redis';
+import { sequelize } from './models/index';
+import { seed } from './seeder.js';
 
 const app = express();
 app.use(express.json());
@@ -15,6 +17,10 @@ async function start() {
 		await client.connect();
 		app.use(morgan('combined'));
 		app.use(config.server.prefix, router);
+
+		if(config.database.environment === 'stage') {
+			seed()
+		}
 
 		app.use(globalErrors());
 
@@ -32,7 +38,12 @@ export { app };
 
 start();
 
-process.on('SIGINT', () => {
-	logger.info(`Application is shutting down... Port: ${config.server.port}`);
-	client.quit();
+process.on('SIGINT', async() => {
+	try {
+		logger.info(`Application is shutting down... Port: ${config.server.port}`);
+		client.quit();
+		await sequelize.close();
+	} catch (error) {
+		logger.error(`Error occurred during shutdown : ${error}`);
+	}
 });
